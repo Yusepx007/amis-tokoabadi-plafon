@@ -5,6 +5,10 @@ import '../../../data/providers/product_provider.dart';
 import '../../../data/models/product_model.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/currency_formatter.dart';
+import '../../../data/providers/auth_provider.dart';
+import '../../../routes/app_routes.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter/services.dart';
 
 class CatalogScreen extends ConsumerStatefulWidget {
   const CatalogScreen({super.key});
@@ -20,6 +24,25 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
   @override
   Widget build(BuildContext context) {
     final ps = ref.watch(productProvider);
+    final screenWidth = MediaQuery.of(context).size.width;
+
+    int crossAxisCount = 2;
+    double childAspectRatio = 0.70;
+
+    if (screenWidth > 1200) {
+      crossAxisCount = 5;
+      childAspectRatio = 0.75;
+    } else if (screenWidth > 900) {
+      crossAxisCount = 4;
+      childAspectRatio = 0.72;
+    } else if (screenWidth > 600) {
+      crossAxisCount = 3;
+      childAspectRatio = 0.70;
+    } else {
+      crossAxisCount = 2;
+      childAspectRatio = screenWidth < 360 ? 0.58 : 0.64;
+    }
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -28,6 +51,14 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
         actions: [
           IconButton(onPressed: () {}, icon: const Icon(Icons.search, color: Colors.white)),
           IconButton(onPressed: () {}, icon: const Icon(Icons.filter_list_rounded, color: Colors.white)),
+          IconButton(
+            onPressed: () async {
+              await ref.read(authProvider.notifier).logout();
+              if (!context.mounted) return;
+              Navigator.pushReplacementNamed(context, AppRoutes.login);
+            },
+            icon: const Icon(Icons.logout_outlined, color: Colors.white, size: 22),
+          ),
         ],
       ),
       body: Column(children: [
@@ -74,7 +105,12 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
                   ? const Center(child: Text('Produk tidak ditemukan', style: TextStyle(fontFamily: 'Poppins', color: AppColors.textSecondary)))
                   : GridView.builder(
                       padding: const EdgeInsets.all(12),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, crossAxisSpacing: 10, mainAxisSpacing: 10, childAspectRatio: 0.72),
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: crossAxisCount,
+                        crossAxisSpacing: 10,
+                        mainAxisSpacing: 10,
+                        childAspectRatio: childAspectRatio,
+                      ),
                       itemCount: ps.filteredProducts.length,
                       itemBuilder: (context, index) => _CatalogCard(product: ps.filteredProducts[index]),
                     ),
@@ -110,7 +146,7 @@ class _CatalogCard extends StatelessWidget {
                     ? Image.network(
                         product.foto!.startsWith('http')
                             ? product.foto!
-                            : '${ApiConstants.baseUrl}/${product.foto}',
+                            : '${ApiConstants.baseUrl}/${product.foto!.split('/').map(Uri.encodeComponent).join('/')}',
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) => Container(
                           color: cc.withValues(alpha: 0.1),
@@ -161,7 +197,30 @@ class _CatalogCard extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(8, 6, 8, 10),
           child: Row(children: [
             Expanded(child: GestureDetector(
-              onTap: () => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Membuka WhatsApp untuk ${product.nama}...'), backgroundColor: AppColors.whatsapp, behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)))),
+              onTap: () async {
+                final message = Uri.encodeComponent(
+                  'Halo! Saya ingin membagikan produk dari Toko Abadi Plafon:\n\n'
+                  'Nama: ${product.nama}\n'
+                  'Kode: ${product.kodeMotif}\n'
+                  'Kategori: ${product.categoryNama}\n'
+                  'Ukuran: ${product.ukuran}\n'
+                  'Harga: ${CurrencyFormatter.format(product.hargaJual)}/${product.satuanShort}\n'
+                  'Stok saat ini: ${product.stok} ${product.satuanShort}'
+                );
+                final uri = Uri.parse('https://wa.me/?text=$message');
+                if (await canLaunchUrl(uri)) {
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                } else {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: const Text('Gagal membuka WhatsApp'),
+                      backgroundColor: AppColors.danger,
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ));
+                  }
+                }
+              },
               child: Container(
                 height: 28,
                 decoration: BoxDecoration(color: AppColors.whatsapp, borderRadius: BorderRadius.circular(8)),
@@ -170,7 +229,28 @@ class _CatalogCard extends StatelessWidget {
             )),
             const SizedBox(width: 6),
             Expanded(child: GestureDetector(
-              onTap: () => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Membuka Instagram untuk ${product.nama}...'), backgroundColor: AppColors.instagram, behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)))),
+              onTap: () async {
+                final text = 
+                  'Toko Abadi Plafon — ${product.nama}\n'
+                  'Kode Motif: ${product.kodeMotif} (${product.categoryNama})\n'
+                  'Ukuran: ${product.ukuran}\n'
+                  'Harga: ${CurrencyFormatter.format(product.hargaJual)}/${product.satuanShort}';
+                await Clipboard.setData(ClipboardData(text: text));
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: const Row(
+                      children: [
+                        Icon(Icons.check_circle_outline, color: Colors.white, size: 18),
+                        SizedBox(width: 8),
+                        Text('Detail produk disalin! Silakan tempel di Instagram.'),
+                      ],
+                    ),
+                    backgroundColor: AppColors.instagram,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ));
+                }
+              },
               child: Container(
                 height: 28,
                 decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFFE1306C), Color(0xFFF77737)]), borderRadius: BorderRadius.circular(8)),

@@ -3,8 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/providers/transaction_provider.dart';
 import '../../../data/providers/product_provider.dart';
 import '../../../data/providers/auth_provider.dart';
-import '../../../data/models/product_model.dart';
-import '../../../data/models/transaction_model.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/currency_formatter.dart';
 

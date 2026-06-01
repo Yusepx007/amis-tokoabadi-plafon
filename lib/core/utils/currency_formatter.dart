@@ -7,12 +7,6 @@ class CurrencyFormatter {
     decimalDigits: 0,
   );
 
-  static final NumberFormat _compactFormatter = NumberFormat.compactCurrency(
-    locale: 'id_ID',
-    symbol: 'Rp ',
-    decimalDigits: 1,
-  );
-
   /// Format angka ke Rupiah: Rp 1.500.000
   static String format(num amount) {
     return _rupiahFormatter.format(amount);

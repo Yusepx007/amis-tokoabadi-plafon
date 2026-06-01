@@ -6,6 +6,7 @@ import '../../../data/providers/auth_provider.dart';
 import '../../../data/models/product_model.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/currency_formatter.dart';
+import '../../../routes/app_routes.dart';
 
 class InventoryScreen extends ConsumerStatefulWidget {
   const InventoryScreen({super.key});
@@ -43,6 +44,14 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
         actions: [
           IconButton(onPressed: () {}, icon: const Icon(Icons.search, color: Colors.white)),
           if (canManage) IconButton(onPressed: () {}, icon: const Icon(Icons.add_circle_outline, color: Colors.white)),
+          IconButton(
+            onPressed: () async {
+              await ref.read(authProvider.notifier).logout();
+              if (!context.mounted) return;
+              Navigator.pushReplacementNamed(context, AppRoutes.login);
+            },
+            icon: const Icon(Icons.logout_outlined, color: Colors.white, size: 22),
+          ),
         ],
       ),
       body: Column(
@@ -96,9 +105,9 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
             child: productState.isLoading
                 ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
                 : productState.filteredProducts.isEmpty
-                    ? Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                        Icon(Icons.inventory_2_outlined, size: 64, color: AppColors.textHint), const SizedBox(height: 12),
-                        const Text('Produk tidak ditemukan', style: TextStyle(fontFamily: 'Poppins', fontSize: 15, fontWeight: FontWeight.w500, color: AppColors.textSecondary)),
+                    ? const Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                        Icon(Icons.inventory_2_outlined, size: 64, color: AppColors.textHint), SizedBox(height: 12),
+                        Text('Produk tidak ditemukan', style: TextStyle(fontFamily: 'Poppins', fontSize: 15, fontWeight: FontWeight.w500, color: AppColors.textSecondary)),
                       ]))
                     : ListView.builder(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -146,7 +155,7 @@ class _ProductListItem extends StatelessWidget {
                     ? Image.network(
                         product.foto!.startsWith('http')
                             ? product.foto!
-                            : '${ApiConstants.baseUrl}/${product.foto}',
+                            : '${ApiConstants.baseUrl}/${product.foto!.split('/').map(Uri.encodeComponent).join('/')}',
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) => Column(
                           mainAxisAlignment: MainAxisAlignment.center,
